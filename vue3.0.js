@@ -5226,6 +5226,7 @@ var Vue = (function (exports) {
                       warn(`app.config cannot be replaced. Modify individual options instead.`);
                   }
               },
+              // 插件注册
               use(plugin, ...options) {
                   if (installedPlugins.has(plugin)) {
                       warn(`Plugin has already been applied to target app.`);
@@ -5256,6 +5257,7 @@ var Vue = (function (exports) {
                   }
                   return app;
               },
+              // 组件注册
               component(name, component) {
                   {
                       validateComponentName(name, context.config);
@@ -5269,6 +5271,7 @@ var Vue = (function (exports) {
                   context.components[name] = component;
                   return app;
               },
+              // 指令注册
               directive(name, directive) {
                   {
                       validateDirectiveName(name);
@@ -5282,6 +5285,7 @@ var Vue = (function (exports) {
                   context.directives[name] = directive;
                   return app;
               },
+              // dom 挂载
               mount(rootContainer, isHydrate, isSVG) {
                   if (!isMounted) {
                       const vnode = createVNode(rootComponent, rootProps);
@@ -5315,6 +5319,7 @@ var Vue = (function (exports) {
                           `mount - e.g. \`const createMyApp = () => createApp(App)\``);
                   }
               },
+              // 卸载
               unmount() {
                   if (isMounted) {
                       render(null, app._container);
@@ -5327,6 +5332,7 @@ var Vue = (function (exports) {
                       warn(`Cannot unmount an app that is not mounted.`);
                   }
               },
+              // 注入
               provide(key, value) {
                   if (key in context.provides) {
                       warn(`App already provides property with key "${String(key)}". ` +
