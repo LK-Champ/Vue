@@ -5822,8 +5822,16 @@ var Vue = (function (exports) {
       const { insert: hostInsert, remove: hostRemove, patchProp: hostPatchProp, forcePatchProp: hostForcePatchProp, createElement: hostCreateElement, createText: hostCreateText, createComment: hostCreateComment, setText: hostSetText, setElementText: hostSetElementText, parentNode: hostParentNode, nextSibling: hostNextSibling, setScopeId: hostSetScopeId = NOOP, cloneNode: hostCloneNode, insertStaticContent: hostInsertStaticContent } = options;
       // Note: functions inside this closure should use `const xxx = () => {}`
       // style in order to prevent being inlined by minifiers.
+      // 这个函数有两个作用，第一个就是根据 vnode 挂载DOM，另一个就是根据新旧vnode 更新DOM
+
+      // 第一个参数 n1 表示旧的 vnode，当 n1 为 null 的时候，表示是一次挂载的过程；
+
+      // 第二个参数 n2 表示新的 vnode 节点，后续会根据这个 vnode 类型执行不同的处理逻辑；
+
+      // 第三个参数 container 表示 DOM 容器，也就是 vnode 渲染生成 DOM 后，会挂载到 container 下面。
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, slotScopeIds = null, optimized = false) => {
           // patching & not same type, unmount old tree
+          // 如果旧阶段存在，并且新旧节点不一样，就销毁旧节点。
           if (n1 && !isSameVNodeType(n1, n2)) {
               anchor = getNextHostNode(n1);
               unmount(n1, parentComponent, parentSuspense, true);
@@ -5836,12 +5844,15 @@ var Vue = (function (exports) {
           const { type, ref, shapeFlag } = n2;
           switch (type) {
               case Text:
+                  // 处理文本节点
                   processText(n1, n2, container, anchor);
                   break;
               case Comment$1:
+                  // 处理注释节点
                   processCommentNode(n1, n2, container, anchor);
                   break;
               case Static:
+                  // 处理静态节点
                   if (n1 == null) {
                       mountStaticNode(n2, container, anchor, isSVG);
                   }
@@ -5850,19 +5861,24 @@ var Vue = (function (exports) {
                   }
                   break;
               case Fragment:
+                  // 处理 Fragment 元素
                   processFragment(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
                   break;
               default:
                   if (shapeFlag & 1 /* ELEMENT */) {
+                      // 处理普通 DOM 元素
                       processElement(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
                   }
                   else if (shapeFlag & 6 /* COMPONENT */) {
+                      // 处理组件节点
                       processComponent(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
                   }
                   else if (shapeFlag & 64 /* TELEPORT */) {
+                      // 处理 TELEPORT
                       type.process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized, internals);
                   }
                   else if (shapeFlag & 128 /* SUSPENSE */) {
+                      // 处理 SUSPENSE
                       type.process(n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized, internals);
                   }
                   else {
@@ -6235,15 +6251,19 @@ var Vue = (function (exports) {
       };
       const processComponent = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized) => {
           n2.slotScopeIds = slotScopeIds;
+          // 第一次渲染 n1 就是为空
           if (n1 == null) {
               if (n2.shapeFlag & 512 /* COMPONENT_KEPT_ALIVE */) {
+                  // kept alive
                   parentComponent.ctx.activate(n2, container, anchor, isSVG, optimized);
               }
               else {
+                  // 挂载组件
                   mountComponent(n2, container, anchor, parentComponent, parentSuspense, isSVG, optimized);
               }
           }
           else {
+              // 更新组件
               updateComponent(n1, n2, optimized);
           }
       };
@@ -6956,14 +6976,17 @@ var Vue = (function (exports) {
       // 组件渲染的核心逻辑
       const render = (vnode, container, isSVG) => {
           if (vnode == null) {
+              // 销毁组件
               if (container._vnode) {
                   unmount(container._vnode, null, null, true);
               }
           }
           else {
+              // 创建或者更新组件，container._vnode 缓存的旧节点，vnode 表示新的节点
               patch(container._vnode || null, vnode, container, null, null, null, isSVG);
           }
           flushPostFlushCbs();
+          // 缓存 vnode 
           container._vnode = vnode;
       };
       const internals = {
@@ -7447,8 +7470,7 @@ var Vue = (function (exports) {
               : ref
           : null);
   };
-  const createVNode = (createVNodeWithArgsTransform
-      );
+  const createVNode = (createVNodeWithArgsTransform);
   function _createVNode(type, props = null, children = null, patchFlag = 0, dynamicProps = null, isBlockNode = false) {
       if (!type || type === NULL_DYNAMIC_COMPONENT) {
           if (!type) {
@@ -7472,6 +7494,7 @@ var Vue = (function (exports) {
       }
       // class & style normalization.
       if (props) {
+          // 处理 props 相关逻辑，标准化 class 和 style
           // for reactive or proxy objects, we need to clone it to enable mutation.
           if (isProxy(props) || InternalObjectKey in props) {
               props = extend({}, props);
@@ -7489,6 +7512,7 @@ var Vue = (function (exports) {
               props.style = normalizeStyle(style);
           }
       }
+       // 对 vnode 类型信息编码
       // encode the vnode type information into a bitmap
       const shapeFlag = isString(type)
           ? 1 /* ELEMENT */
@@ -7539,6 +7563,7 @@ var Vue = (function (exports) {
       if (vnode.key !== vnode.key) {
           warn(`VNode created with invalid key (NaN). VNode type:`, vnode.type);
       }
+      // 标准化子节点，把不同数据类型的 children 转成数组或者文本类型
       normalizeChildren(vnode, children);
       // normalize suspense children
       if (shapeFlag & 128 /* SUSPENSE */) {
@@ -10024,7 +10049,12 @@ var Vue = (function (exports) {
       }
       const { mount } = app;
       // 重写 mount 方法
+      // 因为Vue.js 不仅仅是为 Web 平台服务，它的目标是支持跨平台渲染，
+      // 而 createApp 函数内部的 app.mount 方法是一个标准的可跨平台的组件渲染流程：创建 vnode -> 渲染 vnode
+      // 所以这里面的代码不应该包含任何特定平台相关的逻辑，也就是说这些代码的执行逻辑都是与平台无关的。
+      // 因此我们需要在外部重写这个方法，来完善 Web 平台下的渲染逻辑。
       app.mount = (containerOrSelector) => {
+          // 标准化容器
           const container = normalizeContainer(containerOrSelector);
           if (!container)
               return;
