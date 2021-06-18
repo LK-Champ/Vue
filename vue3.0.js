@@ -6268,6 +6268,7 @@ var Vue = (function (exports) {
           }
       };
       const mountComponent = (initialVNode, container, anchor, parentComponent, parentSuspense, isSVG, optimized) => {
+          // 创建组件实例
           const instance = (initialVNode.component = createComponentInstance(initialVNode, parentComponent, parentSuspense));
           if (instance.type.__hmrId) {
               registerHMR(instance);
@@ -6285,6 +6286,7 @@ var Vue = (function (exports) {
               {
                   startMeasure(instance, `init`);
               }
+              // 设置组件实例
               setupComponent(instance);
               {
                   endMeasure(instance, `init`);
@@ -6302,6 +6304,7 @@ var Vue = (function (exports) {
               }
               return;
           }
+           // 设置并运行带副作用的渲染函数
           setupRenderEffect(instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized);
           {
               popWarningContext();
