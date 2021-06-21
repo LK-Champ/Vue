@@ -5831,7 +5831,7 @@ var Vue = (function (exports) {
       // 第三个参数 container 表示 DOM 容器，也就是 vnode 渲染生成 DOM 后，会挂载到 container 下面。
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, slotScopeIds = null, optimized = false) => {
           // patching & not same type, unmount old tree
-          // 如果旧阶段存在，并且新旧节点不一样，就销毁旧节点。
+          // 如果旧节点存在，并且新旧节点不一样，就销毁旧节点。
           if (n1 && !isSameVNodeType(n1, n2)) {
               anchor = getNextHostNode(n1);
               unmount(n1, parentComponent, parentSuspense, true);
@@ -6346,6 +6346,7 @@ var Vue = (function (exports) {
       };
       const setupRenderEffect = (instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized) => {
           // create reactive effect for rendering
+          // 创建响应式的副作用渲染函数
           instance.update = effect(function componentEffect() {
               if (!instance.isMounted) {
                   let vnodeHook;
@@ -6393,6 +6394,7 @@ var Vue = (function (exports) {
                       {
                           startMeasure(instance, `render`);
                       }
+                      // 渲染组件生成子树 vnode
                       const subTree = (instance.subTree = renderComponentRoot(instance));
                       {
                           endMeasure(instance, `render`);
@@ -6400,10 +6402,12 @@ var Vue = (function (exports) {
                       {
                           startMeasure(instance, `patch`);
                       }
+                      // 把子树 vnode 挂载到 container 中
                       patch(null, subTree, container, anchor, instance, parentSuspense, isSVG);
                       {
                           endMeasure(instance, `patch`);
                       }
+                      // 保留渲染生成的子树根 DOM 节点
                       initialVNode.el = subTree.el;
                   }
                   // mounted hook
@@ -6429,6 +6433,7 @@ var Vue = (function (exports) {
                   initialVNode = container = anchor = null;
               }
               else {
+                  // 更新组件
                   // updateComponent
                   // This is triggered by mutation of component's own state (next: null)
                   // OR parent calling processComponent (next: VNode)
@@ -7442,6 +7447,7 @@ var Vue = (function (exports) {
       return value ? value.__v_isVNode === true : false;
   }
   function isSameVNodeType(n1, n2) {
+      // & 两位都是 1 则设置每位为 1，5 & 1	= 1	0101 & 0001	0001
       if (n2.shapeFlag & 6 /* COMPONENT */ &&
           hmrDirtyComponents.has(n2.type)) {
           // HMR only: if the component has been hot-updated, force a reload.
