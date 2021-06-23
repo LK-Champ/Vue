@@ -5813,6 +5813,7 @@ var Vue = (function (exports) {
       return baseCreateRenderer(options, createHydrationFunctions);
   }
   // implementation
+  // options === nodeOps
   function baseCreateRenderer(options, createHydrationFns) {
       {
           const target = getGlobalThis();
@@ -5950,30 +5951,42 @@ var Vue = (function (exports) {
       const processElement = (n1, n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized) => {
           isSVG = isSVG || n2.type === 'svg';
           if (n1 == null) {
+              // 挂载元素
               mountElement(n2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
           }
           else {
+              // 对比更新元素
               patchElement(n1, n2, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
           }
       };
       const mountElement = (vnode, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized) => {
-          let el;
+        // 挂载元素函数主要做四件事：创建 DOM 元素节点、处理 props、处理 children、挂载 DOM 元素到 container 上。  
+        let el;
           let vnodeHook;
           const { type, props, shapeFlag, transition, patchFlag, dirs } = vnode;
           {
+              // 创建 DOM 元素
+              // 创建 DOM 元素节点
+              // 它调用了底层的 DOM API document.createElement 创建元素，所以本质上 Vue.js 强调不去操作 DOM ，
+              // 只是希望用户不直接碰触 DOM，它并没有什么神奇的魔法，底层还是会操作 DOM。
+              // 如果是其他平台比如 Weex，hostCreateElement 方法就不再是操作 DOM ，
+              // 而是平台相关的 API 了，这些平台相关的方法是在创建渲染器阶段作为参数传入的。
               el = vnode.el = hostCreateElement(vnode.type, isSVG, props && props.is, props);
               // mount children first, since some props may rely on child content
               // being already rendered, e.g. `<select value>`
               if (shapeFlag & 8 /* TEXT_CHILDREN */) {
+                  // 处理子节点是纯文本的情况
                   hostSetElementText(el, vnode.children);
               }
               else if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+                  // 处理子节点是数组的情况
                   mountChildren(vnode.children, el, null, parentComponent, parentSuspense, isSVG && type !== 'foreignObject', slotScopeIds, optimized || !!vnode.dynamicChildren);
               }
               if (dirs) {
                   invokeDirectiveHook(vnode, null, parentComponent, 'created');
               }
               // props
+              // 处理 DOM 元素节点的属性，比如 class、style、event 等属性
               if (props) {
                   for (const key in props) {
                       if (!isReservedProp(key)) {
@@ -6008,6 +6021,7 @@ var Vue = (function (exports) {
           if (needCallTransitionHooks) {
               transition.beforeEnter(el);
           }
+          // 把创建的 DOM 元素节点挂载到 container 上
           hostInsert(el, container, anchor);
           if ((vnodeHook = props && props.onVnodeMounted) ||
               needCallTransitionHooks ||
@@ -6043,9 +6057,13 @@ var Vue = (function (exports) {
       };
       const mountChildren = (children, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized, start = 0) => {
           for (let i = start; i < children.length; i++) {
+              // 子节点的挂载逻辑同样很简单，遍历 children 获取到每一个 child，
+              // 然后递归执行 patch 方法挂载每一个 child 。
               const child = (children[i] = optimized
                   ? cloneIfMounted(children[i])
                   : normalizeVNode(children[i]));
+            //在 mountChildren 的时候递归执行的是 patch 函数，
+            // 而不是 mountElement 函数，这是因为子节点可能有其他类型的 vnode，比如组件 vnode。
               patch(null, child, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
           }
       };
@@ -6346,6 +6364,16 @@ var Vue = (function (exports) {
       };
       const setupRenderEffect = (instance, initialVNode, container, anchor, parentSuspense, isSVG, optimized) => {
           // create reactive effect for rendering
+          
+          // 该函数利用响应式库的 effect 函数创建了一个副作用渲染函数 componentEffect 
+          //（effect 的实现我们后面讲响应式章节会具体说）。副作用，这里你可以简单地理解为，
+          // 当组件的数据发生变化时，effect 函数包裹的内部渲染函数 componentEffect 会重新执行一遍，
+          // 从而达到重新渲染组件的目的。
+          
+          // 渲染函数内部也会判断这是一次初始渲染还是组件更新。这里我们只分析初始渲染流程。
+          // 初始渲染主要做两件事情：渲染组件生成 subTree、把 subTree 挂载到 container 中。
+
+
           // 创建响应式的副作用渲染函数
           instance.update = effect(function componentEffect() {
               if (!instance.isMounted) {
@@ -8804,6 +8832,9 @@ var Vue = (function (exports) {
   const doc = (typeof document !== 'undefined' ? document : null);
   let tempContainer;
   let tempSVGContainer;
+  
+
+  // 原始底层操作 dom 的方法
   const nodeOps = {
       insert: (child, parent, anchor) => {
           parent.insertBefore(child, anchor || null);
@@ -8815,6 +8846,9 @@ var Vue = (function (exports) {
           }
       },
       createElement: (tag, isSVG, is, props) => {
+        // 它调用了底层的 DOM API document.createElement 创建元素，
+        // 所以本质上 Vue.js 强调不去操作 DOM ，只是希望用户不直接碰触 DOM，
+        // 它并没有什么神奇的魔法，底层还是会操作 DOM。
           const el = isSVG
               ? doc.createElementNS(svgNS, tag)
               : doc.createElement(tag, is ? { is } : undefined);
@@ -8829,6 +8863,7 @@ var Vue = (function (exports) {
           node.nodeValue = text;
       },
       setElementText: (el, text) => {
+          // 处理纯文本的情况
           el.textContent = text;
       },
       parentNode: node => node.parentNode,
