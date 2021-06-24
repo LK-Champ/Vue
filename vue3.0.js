@@ -2602,7 +2602,9 @@ var Vue = (function (exports) {
       );
   };
   function shouldUpdateComponent(prevVNode, nextVNode, optimized) {
+      // 旧节点：属性、children、component
       const { props: prevProps, children: prevChildren, component } = prevVNode;
+      // 新节点：属性、children、patchFlag
       const { props: nextProps, children: nextChildren, patchFlag } = nextVNode;
       const emits = component.emitsOptions;
       // Parent component's render function was hot-updated. Since this may have
@@ -5826,16 +5828,20 @@ var Vue = (function (exports) {
       // 这个函数有两个作用，第一个就是根据 vnode 挂载DOM，另一个就是根据新旧vnode 更新DOM
 
       // 第一个参数 n1 表示旧的 vnode，当 n1 为 null 的时候，表示是一次挂载的过程；
-
       // 第二个参数 n2 表示新的 vnode 节点，后续会根据这个 vnode 类型执行不同的处理逻辑；
-
       // 第三个参数 container 表示 DOM 容器，也就是 vnode 渲染生成 DOM 后，会挂载到 container 下面。
+
+      // 功能
+      // 1. 判断新旧节点是否都是相同的 vnode 类型，如果不同，就先删除旧的 vnde 挂载新的 vnode.
+      // 如果 旧的节点是 div，新的节点是 ul，最简单的方式就是删除 div ，然后挂载 ul
+      // 2. 如果新旧节点是相同类型的 vnode，就走对比更新的逻辑
       const patch = (n1, n2, container, anchor = null, parentComponent = null, parentSuspense = null, isSVG = false, slotScopeIds = null, optimized = false) => {
           // patching & not same type, unmount old tree
           // 如果旧节点存在，并且新旧节点不一样，就销毁旧节点。
           if (n1 && !isSameVNodeType(n1, n2)) {
               anchor = getNextHostNode(n1);
               unmount(n1, parentComponent, parentSuspense, true);
+              // 保证后续都走 mount 流程
               n1 = null;
           }
           if (n2.patchFlag === -2 /* BAIL */) {
@@ -5854,6 +5860,8 @@ var Vue = (function (exports) {
                   break;
               case Static:
                   // 处理静态节点
+                  // 如果旧静态节点不存在，就将新的节点挂载
+                  // 如果存在就 patch 新旧 node
                   if (n1 == null) {
                       mountStaticNode(n2, container, anchor, isSVG);
                   }
@@ -6140,6 +6148,7 @@ var Vue = (function (exports) {
           }
           else if (!optimized && dynamicChildren == null) {
               // unoptimized, full diff
+              // 更新 props
               patchProps(el, n2, oldProps, newProps, parentComponent, parentSuspense, isSVG);
           }
           const areChildrenSVG = isSVG && n2.type !== 'foreignObject';
@@ -6151,6 +6160,7 @@ var Vue = (function (exports) {
           }
           else if (!optimized) {
               // full diff
+              // 更新子节点
               patchChildren(n1, n2, el, null, parentComponent, parentSuspense, areChildrenSVG, slotScopeIds, false);
           }
           if ((vnodeHook = newProps.onVnodeUpdated) || dirs) {
@@ -6331,6 +6341,9 @@ var Vue = (function (exports) {
       };
       const updateComponent = (n1, n2, optimized) => {
           const instance = (n2.component = n1.component);
+          // 根据新旧子组件 vnode 判断是否需要更新子组件
+          // 在 shouldUpdateComponent 函数的内部，
+          // 主要是通过检测和对比组件 vnode 中的 props、chidren、dirs、transiton 等属性，来决定子组件是否需要更新。
           if (shouldUpdateComponent(n1, n2, optimized)) {
               if (instance.asyncDep &&
                   !instance.asyncResolved) {
@@ -6347,16 +6360,23 @@ var Vue = (function (exports) {
               }
               else {
                   // normal update
+                  // 新的子组件 vnode 赋值给 instance.next
                   instance.next = n2;
                   // in case the child component is also queued, remove it to avoid
                   // double updating the same child component in the same flush.
+
+                  // 先执行 invalidateJob（instance.update）避免子组件由于自身数据变化导致的重复更新，
+                  // 然后又执行了子组件的副作用渲染函数 instance.update 来主动触发子组件的更新。
+                  // 子组件也可能因为数据变化被添加到更新队列里了，移除它们防止对一个子组件重复更新
                   invalidateJob(instance.update);
                   // instance.update is the reactive effect runner.
+                  // 执行子组件的副作用渲染函数
                   instance.update();
               }
           }
           else {
               // no update needed. just copy over properties
+              // 不需要更新。只是做属性的复制
               n2.component = n1.component;
               n2.el = n1.el;
               instance.vnode = n2;
@@ -6465,6 +6485,7 @@ var Vue = (function (exports) {
                   // updateComponent
                   // This is triggered by mutation of component's own state (next: null)
                   // OR parent calling processComponent (next: VNode)
+                  // next 表示新的组件 vnode 节点信息
                   let { next, bu, u, parent, vnode } = instance;
                   let originNext = next;
                   let vnodeHook;
@@ -6473,6 +6494,7 @@ var Vue = (function (exports) {
                   }
                   if (next) {
                       next.el = vnode.el;
+                      // 更新 新的组件 vnode 节点信息
                       updateComponentPreRender(instance, next, optimized);
                   }
                   else {
@@ -6490,23 +6512,30 @@ var Vue = (function (exports) {
                   {
                       startMeasure(instance, `render`);
                   }
+                  // 渲染新的子树 vnode 
+                  // renderComponentRoot 的作用就是用来渲染子树 vnode
                   const nextTree = renderComponentRoot(instance);
                   {
                       endMeasure(instance, `render`);
                   }
+                  // 缓存旧的子树 vnode
                   const prevTree = instance.subTree;
                   instance.subTree = nextTree;
                   {
                       startMeasure(instance, `patch`);
                   }
+                  // 根据新旧 子树vnode 做patch 
                   patch(prevTree, nextTree, 
+                  // 如果在 teleport 组件中父节点可能已经改变，所以容器直接找旧树 DOM 元素的父节点
                   // parent may have changed if it's in a teleport
                   hostParentNode(prevTree.el), 
                   // anchor may have changed if it's in a fragment
+                  // 参考节点在 fragment 的情况可能改变，所以直接找旧树 DOM 元素的下一个节点
                   getNextHostNode(prevTree), instance, parentSuspense, isSVG);
                   {
                       endMeasure(instance, `patch`);
                   }
+                  // 缓存更新后的 DOM 节点
                   next.el = nextTree.el;
                   if (originNext === null) {
                       // self-triggered update. In case of HOC, update parent component
@@ -6536,11 +6565,17 @@ var Vue = (function (exports) {
           }
       };
       const updateComponentPreRender = (instance, nextVNode, optimized) => {
+          // 新组件 vnode 的 component 属性指向组件实例
           nextVNode.component = instance;
+          // 旧组件 vnode 的 props 属性
           const prevProps = instance.vnode.props;
+          // 组件实例的 vnode 属性指向新的组件 vnode
           instance.vnode = nextVNode;
+          // 清空 next 属性，为了下一次重新渲染准备
           instance.next = null;
+          // 更新 props
           updateProps(instance, nextVNode.props, prevProps, optimized);
+          // 更新 插槽
           updateSlots(instance, nextVNode.children, optimized);
           pauseTracking();
           // props update may have triggered pre-flush watchers.
@@ -7477,10 +7512,11 @@ var Vue = (function (exports) {
   function isSameVNodeType(n1, n2) {
       // & 两位都是 1 则设置每位为 1，5 & 1	= 1	0101 & 0001	0001
       if (n2.shapeFlag & 6 /* COMPONENT */ &&
-          hmrDirtyComponents.has(n2.type)) {
-          // HMR only: if the component has been hot-updated, force a reload.
-          return false;
-      }
+        hmrDirtyComponents.has(n2.type)) {
+            // HMR only: if the component has been hot-updated, force a reload.
+            return false;
+        }
+      // n1 和 n2 节点的 type 和 key 都相同，才是相同节点
       return n1.type === n2.type && n1.key === n2.key;
   }
   let vnodeArgsTransformer;
