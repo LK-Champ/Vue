@@ -6588,6 +6588,8 @@ var Vue = (function (exports) {
           const prevShapeFlag = n1 ? n1.shapeFlag : 0;
           const c2 = n2.children;
           const { patchFlag, shapeFlag } = n2;
+          // 子节点可能有三种可能，空、数组、文本
+
           // fast path
           if (patchFlag > 0) {
               if (patchFlag & 128 /* KEYED_FRAGMENT */) {
@@ -6605,10 +6607,12 @@ var Vue = (function (exports) {
           // children has 3 possibilities: text, array or no children.
           if (shapeFlag & 8 /* TEXT_CHILDREN */) {
               // text children fast path
+              // 数组到文本，删除之前的节点
               if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
                   unmountChildren(c1, parentComponent, parentSuspense);
               }
               if (c2 !== c1) {
+                  // 文本不一致，新的文本替换旧的文本
                   hostSetElementText(container, c2);
               }
           }
@@ -6616,10 +6620,12 @@ var Vue = (function (exports) {
               if (prevShapeFlag & 16 /* ARRAY_CHILDREN */) {
                   // prev children was array
                   if (shapeFlag & 16 /* ARRAY_CHILDREN */) {
+                      // 之前的节点是数组，现在的节点也是数组做完整的 diff 操作
                       // two arrays, cannot assume anything, do full diff
                       patchKeyedChildren(c1, c2, container, anchor, parentComponent, parentSuspense, isSVG, slotScopeIds, optimized);
                   }
                   else {
+                      // 之前的节点是数组，现在的节点是空，则删除之前的子节点
                       // no new children, just unmount old
                       unmountChildren(c1, parentComponent, parentSuspense, true);
                   }
