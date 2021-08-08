@@ -1506,10 +1506,6 @@
     normalizeInject(child, vm);
     normalizeDirectives(child);
 
-    // Apply extends and mixins on the child options,
-    // but only if it is a raw options object that isn't
-    // the result of another mergeOptions call.
-    // Only merged options has the _base property.
     if (!child._base) {
       if (child.extends) {
         parent = mergeOptions(parent, child.extends, vm);
@@ -5341,10 +5337,6 @@
       };
     }
     Object.defineProperty(Vue, 'config', configDef);
-
-    // exposed util methods.
-    // NOTE: these are not considered part of the public API - avoid relying on
-    // them unless you are aware of the risk.
     Vue.util = {
       warn: warn,
       extend: extend,
@@ -5356,7 +5348,6 @@
     Vue.delete = del;
     Vue.nextTick = nextTick;
 
-    // 2.6 explicit observable API
     Vue.observable = function (obj) {
       observe(obj);
       return obj
@@ -5366,13 +5357,8 @@
     ASSET_TYPES.forEach(function (type) {
       Vue.options[type + 's'] = Object.create(null);
     });
-
-    // this is used to identify the "base" constructor to extend all plain-object
-    // components with in Weex's multi-instance scenarios.
     Vue.options._base = Vue;
-
     extend(Vue.options.components, builtInComponents);
-
     initUse(Vue);
     initMixin$1(Vue);
     initExtend(Vue);
